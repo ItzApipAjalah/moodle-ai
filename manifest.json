@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "Moodle Auto Quiz Solver (Web Gemini Auto-Pilot)",
+  "version": "1.2.0",
+  "description": "Otomatis membaca soal kuis Moodle/V-Class, menganalisis dengan Web Gemini AI di background popup senyap, dan memilih jawaban yang tepat secara instan.",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://gemini.google.com/*",
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/mod/quiz/*",
+        "*://*/*/mod/quiz/*"
+      ],
+      "js": ["content/content.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": ["content/gemini_web.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

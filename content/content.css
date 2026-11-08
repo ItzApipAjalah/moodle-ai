@@ -1,0 +1,621 @@
+/* Glassmorphic Floating Widget for Moodle AI Solver */
+#moodle-ai-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999999;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #0f172a;
+  width: 335px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.4);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+#moodle-ai-widget.minimized {
+  width: auto;
+  border-radius: 40px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#moodle-ai-widget.minimized:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -5px rgba(37, 99, 235, 0.35);
+}
+
+#moodle-ai-widget.minimized .moodle-ai-body {
+  display: none;
+}
+
+#moodle-ai-widget.minimized .moodle-ai-header {
+  padding: 10px 18px;
+  background: rgba(37, 99, 235, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 40px;
+  cursor: pointer;
+  gap: 10px;
+}
+
+#moodle-ai-widget.minimized .moodle-ai-title {
+  font-size: 13px;
+  color: #ffffff;
+}
+
+#moodle-ai-widget.minimized .moodle-ai-controls {
+  display: flex;
+  margin-left: 6px;
+}
+
+/* Glass Header */
+.moodle-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(30, 64, 175, 0.95));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #ffffff;
+  border-top-left-radius: 17px;
+  border-top-right-radius: 17px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: move;
+}
+
+.moodle-ai-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.moodle-ai-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moodle-ai-title {
+  font-weight: 700;
+  font-size: 13.5px;
+  letter-spacing: -0.2px;
+}
+
+.moodle-ai-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.moodle-ai-btn-icon {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.moodle-ai-btn-icon:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+/* Body Container */
+.moodle-ai-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+}
+
+/* Glass Status Card */
+.moodle-ai-status-box {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(241, 245, 249, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #334155;
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  transition: all 0.3s ease;
+}
+
+.moodle-ai-status-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.moodle-ai-status-box.ready {
+  background: rgba(239, 246, 255, 0.75);
+  color: #1d4ed8;
+  border-color: rgba(147, 197, 253, 0.5);
+}
+
+.moodle-ai-status-box.loading {
+  background: rgba(254, 252, 232, 0.85);
+  color: #854d0e;
+  border-color: rgba(253, 224, 71, 0.5);
+}
+
+.moodle-ai-status-box.success {
+  background: rgba(240, 253, 244, 0.85);
+  color: #15803d;
+  border-color: rgba(134, 239, 172, 0.5);
+}
+
+.moodle-ai-status-box.error {
+  background: rgba(254, 242, 242, 0.85);
+  color: #b91c1c;
+  border-color: rgba(252, 165, 165, 0.5);
+}
+
+.moodle-ai-status-text {
+  flex: 1;
+  word-break: break-word;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+/* 1-Click Auto-Pilot Hero Card */
+.moodle-ai-autopilot-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(99, 102, 241, 0.08));
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 15px -3px rgba(37, 99, 235, 0.08);
+}
+
+.moodle-ai-autopilot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.moodle-ai-autopilot-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a8a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.moodle-ai-autopilot-desc {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* Glass Switch Toggle */
+.moodle-glass-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.moodle-glass-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.moodle-glass-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(203, 213, 225, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.moodle-glass-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ffffff;
+  transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+input:checked + .moodle-glass-slider {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 0 16px rgba(37, 99, 235, 0.35);
+}
+
+input:checked + .moodle-glass-slider:before {
+  transform: translateX(20px);
+}
+
+/* Actions Group */
+.moodle-ai-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Glass Buttons */
+.moodle-ai-btn-primary {
+  width: 100%;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(29, 78, 216, 0.95));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.moodle-ai-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(29, 78, 216, 1), rgba(30, 64, 175, 1));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+
+.moodle-ai-btn-secondary {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #334155;
+  border: 1px solid rgba(203, 213, 225, 0.65);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.2s ease;
+}
+
+.moodle-ai-btn-secondary:hover:not(:disabled) {
+  background: rgba(241, 245, 249, 0.85);
+  border-color: rgba(148, 163, 184, 0.6);
+  color: #0f172a;
+}
+
+.moodle-ai-btn-success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+  transition: all 0.2s ease;
+}
+
+.moodle-ai-btn-success:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(5, 150, 105, 1), rgba(4, 120, 87, 1));
+  transform: translateY(-1px);
+}
+
+.moodle-ai-btn-primary:disabled,
+.moodle-ai-btn-secondary:disabled,
+.moodle-ai-btn-success:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.moodle-ai-sub-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.moodle-ai-toggle-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #475569;
+  padding: 4px 2px;
+}
+
+/* Paste Section */
+.moodle-ai-paste-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: rgba(248, 250, 252, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(203, 213, 225, 0.7);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.moodle-ai-paste-wrap textarea {
+  width: 100%;
+  height: 65px;
+  padding: 8px 10px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(203, 213, 225, 0.7);
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.moodle-ai-paste-wrap textarea:focus {
+  border-color: #3b82f6;
+  background: #ffffff;
+}
+
+.moodle-ai-paste-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Quickset Key */
+.moodle-ai-api-quickset {
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.moodle-ai-api-quickset input {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  border-radius: 8px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.moodle-ai-api-quickset input:focus {
+  border-color: #3b82f6;
+}
+
+.moodle-ai-api-quickset .btn-save-key {
+  padding: 7px;
+  font-size: 11px;
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #334155;
+  transition: background 0.2s;
+}
+
+.moodle-ai-api-quickset .btn-save-key:hover {
+  background: rgba(226, 232, 240, 0.9);
+}
+
+/* Question Highlights & Explanations */
+.moodle-ai-highlight {
+  border: 1.5px solid rgba(16, 185, 129, 0.45) !important;
+  border-radius: 12px !important;
+  background: rgba(16, 185, 129, 0.04) !important;
+  box-shadow: 0 4px 20px -4px rgba(16, 185, 129, 0.12) !important;
+  transition: all 0.3s ease;
+}
+
+.moodle-ai-option-highlight {
+  background: rgba(220, 252, 231, 0.8) !important;
+  border: 1px solid rgba(134, 239, 172, 0.6) !important;
+  border-radius: 6px;
+  padding: 3px 8px;
+  display: inline-block;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.moodle-ai-explanation-badge {
+  display: block;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(240, 253, 244, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(187, 247, 208, 0.7);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #15803d;
+  line-height: 1.45;
+}
+
+.moodle-ai-explanation-badge strong {
+  color: #166534;
+}
+
+/* Glass Modal for Answer Sheet */
+#moodle-ai-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.moodle-ai-modal {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #0f172a;
+}
+
+.moodle-ai-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  background: rgba(248, 250, 252, 0.8);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+.moodle-ai-modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.moodle-ai-modal-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.moodle-ai-answer-card {
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: rgba(248, 250, 252, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.moodle-ai-answer-card .card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: #334155;
+}
+
+.moodle-ai-answer-card .card-qtext {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.moodle-ai-answer-card .card-ans {
+  background: rgba(220, 252, 231, 0.8);
+  color: #166534;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-block;
+  margin-top: 4px;
+  border: 1px solid rgba(134, 239, 172, 0.6);
+}
+
+.moodle-ai-answer-card .card-reason {
+  font-size: 11px;
+  color: #64748b;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.moodle-ai-modal-footer {
+  padding: 14px 22px;
+  background: rgba(248, 250, 252, 0.8);
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #moodle-ai-modal-overlay,
+  #moodle-ai-modal-overlay * {
+    visibility: visible;
+  }
+  #moodle-ai-modal-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: transparent;
+    padding: 0;
+  }
+  .moodle-ai-modal-footer {
+    display: none;
+  }
+}

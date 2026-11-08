@@ -1,0 +1,38 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node / Dependencies
+test/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editors & IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary & Scratch Files
+*.tmp
+*.bak
+debug_*.js
+temp_*.*
+scratch/
+
+# Offline Models / Large Weights (if generated locally)
+models/
+lib/
+*.onnx
+*.wasm
+
+# Extension Packaging Builds
+*.crx
+*.zip
+*.pem

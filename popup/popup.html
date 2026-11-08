@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moodle AI Solver Settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 100 100" fill="currentColor">
+        <defs>
+          <mask id="moodle-header-cutout">
+            <rect width="100" height="100" fill="white" />
+            <path d="M 40 56 L 47 49 L 57.5 68 L 97 23" fill="none" stroke="black" stroke-width="21" stroke-linecap="square" stroke-linejoin="miter" stroke-miterlimit="4" />
+          </mask>
+          <clipPath id="moodle-header-clip">
+            <rect x="40" y="0" width="60" height="100" />
+          </clipPath>
+        </defs>
+        <rect x="14" y="42" width="14" height="44" rx="1.5" />
+        <g mask="url(#moodle-header-cutout)">
+          <rect x="40" y="29" width="14" height="57" rx="1.5" />
+          <rect x="66" y="14" width="14" height="72" rx="1.5" />
+        </g>
+        <path d="M 40 56 L 47 49 L 57.5 68 L 97 23" fill="none" stroke="currentColor" stroke-width="12.5" stroke-linecap="square" stroke-linejoin="miter" stroke-miterlimit="4" clip-path="url(#moodle-header-clip)" />
+      </svg>
+      <h2>Moodle AI Solver</h2>
+    </div>
+    <span class="badge">Web Gemini</span>
+  </div>
+
+  <div class="content">
+    <div class="info-card">
+      <svg class="info-card-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+      <div class="info-card-text">
+        <strong>Auto-Pilot Senyap (Background)</strong>
+        Web Gemini dijalankan otomatis di background tanpa perlu input API key dan tanpa mengalihkan tab kuis Anda.
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="delay">Jeda Waktu Auto-Next (Milidetik)</label>
+      <input type="number" id="delay" value="2000" min="500" step="500">
+      <small>Waktu tunggu sebelum otomatis pindah ke halaman kuis berikutnya (default: 2000 ms).</small>
+    </div>
+
+    <div class="btn-group">
+      <button type="button" id="openGeminiBtn" class="btn btn-secondary">Buka Gemini Web</button>
+      <button type="button" id="saveBtn" class="btn btn-primary">Simpan</button>
+    </div>
+
+    <div id="statusMessage" class="status-msg" style="display:none;"></div>
+  </div>
+
+  <div class="footer">
+    <span>Moodle & V-Class Auto Quiz Solver</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
