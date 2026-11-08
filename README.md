@@ -51,7 +51,7 @@ git clone https://github.com/ItzApipAjalah/moodle-ai.git
 
 ## 3. Cara Menjalankan di Halaman Kuis Moodle
 
-1. Buka halaman kuis Moodle atau V-Class kampus Anda (misalnya: praktikum.gunadarma.ac.id atau v-class).
+1. Buka halaman kuis Moodle 
 2. Mulai percobaan kuis (*Attempt quiz*).
 3. Di pojok kanan bawah layar akan muncul widget antarmuka **Moodle AI Solver**.
 4. Klik tombol utama **Jalankan Auto-Pilot (Web Gemini)** atau aktifkan sakelar **Auto-Pilot 1-Klik**.
