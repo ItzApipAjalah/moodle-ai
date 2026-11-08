@@ -15,10 +15,11 @@
 
 ## Video Demo Penggunaan
 
-Saksikan demonstrasi singkat cara kerja dan penggunaan ekstensi Moodle Auto Quiz Solver secara langsung:
+Format Direct Download / Media Link:
+[https://drive.google.com/uc?export=download&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m](https://drive.google.com/uc?export=download&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m)
 
-<video src="https://drive.google.com/uc?export=download&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m" controls="controls" width="100%">
-</video>
+Format Video Player / Direct Stream:
+[https://drive.google.com/uc?export=open&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m](https://drive.google.com/uc?export=open&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m)
 
 ---
 
