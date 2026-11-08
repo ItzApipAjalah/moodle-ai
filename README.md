@@ -8,8 +8,17 @@
 > **LANGKAH AWAL SEBELUM MENGGUNAKAN (WAJIB DILAKUKAN SEKALI):**
 > 1. Buka situs resmi Google Gemini di browser Anda: `https://gemini.google.com/app?hl=id`
 > 2. Pastikan Anda sudah **masuk (login) ke akun Google** Anda hingga kolom chat input Gemini dapat digunakan secara normal.
-> 3. Jika belum login ke Google Gemini, ekstensi **TIDAK AKAN BISA** memproses soal dan mengambil jawaban 
+> 3. Jika belum login ke Google Gemini, ekstensi **TIDAK AKAN BISA** memproses soal dan mengambil jawaban di jendela latar belakang.
 > *(Setelah Anda login sekali, tab Gemini boleh ditutup. Ekstensi akan otomatis menjalankannya di latar belakang senyap saat kuis berlangsung).*
+
+---
+
+## Video Demo Penggunaan
+
+Saksikan demonstrasi singkat cara kerja dan penggunaan ekstensi Moodle Auto Quiz Solver secara langsung:
+
+<video src="https://drive.google.com/uc?export=download&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m" controls="controls" width="100%">
+</video>
 
 ---
 

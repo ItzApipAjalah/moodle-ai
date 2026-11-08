@@ -48,6 +48,23 @@
       <small>Waktu tunggu sebelum otomatis pindah ke halaman kuis berikutnya (default: 2000 ms).</small>
     </div>
 
+    <!-- GitHub Update Checker Card -->
+    <div class="info-card" id="popupUpdateCard" style="background: rgba(248, 250, 252, 0.95); border: 1px solid rgba(203, 213, 225, 0.85);">
+      <svg class="info-card-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+      <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="color:#0f172a; font-size:11.5px; margin:0;">Pembaruan GitHub</strong>
+          <button type="button" id="popupCheckUpdateBtn" style="background:none; border:none; color:#2563eb; font-size:11px; font-weight:600; cursor:pointer; padding:2px 4px;">Cek Update</button>
+        </div>
+        <div id="popupUpdateStatus" style="font-size:11px; color:#64748b; line-height:1.35;">Repositori: ItzApipAjalah/moodle-ai</div>
+        <div id="popupUpdateActions" style="display:none; margin-top:4px;">
+          <button type="button" id="popupDownloadZipBtn" class="btn btn-primary" style="padding:6px 10px; font-size:11px; width:100%; box-shadow:none;">Unduh Update (.ZIP)</button>
+        </div>
+      </div>
+    </div>
+
     <div class="btn-group">
       <button type="button" id="openGeminiBtn" class="btn btn-secondary">Buka Gemini Web</button>
       <button type="button" id="saveBtn" class="btn btn-primary">Simpan</button>

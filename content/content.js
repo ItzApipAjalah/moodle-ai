@@ -31,6 +31,15 @@
   const ICON_PLUS = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>`;
   const ICON_CLOSE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>`;
   const ICON_SPINNER = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: moodleSpin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`;
+  const ICON_DOWNLOAD = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
+  const ICON_REFRESH = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
+
+  // GitHub Repository Configuration
+  const GITHUB_REPO = "ItzApipAjalah/moodle-ai";
+  const CURRENT_COMMIT_SHA = "d01fc4d3c9bcfdb71facafeacca1da4c6d500835";
+  const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/commits?per_page=1`;
+  const GITHUB_ZIP_URL = `https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip`;
+  const GITHUB_REPO_URL = `https://github.com/${GITHUB_REPO}`;
 
   // Extract Attempt ID for caching
   const urlParams = new URLSearchParams(window.location.search);
@@ -88,6 +97,9 @@
           </span>
         </div>
 
+        <!-- GitHub Update Notification Banner -->
+        <div id="moodle-ai-update-box" style="display:none; margin-bottom:10px;"></div>
+
         <!-- 1-Click Auto-Pilot Hero Toggle Card -->
         <div class="moodle-ai-autopilot-card">
           <div class="moodle-ai-autopilot-info">
@@ -144,6 +156,15 @@
               <button class="moodle-ai-btn-secondary" id="moodle-ai-btn-paste-clip" style="flex:1; padding:6px; font-size:11px;">Clipboard</button>
               <button class="moodle-ai-btn-success" id="moodle-ai-btn-apply-paste" style="flex:1; padding:6px; font-size:11px;">Terapkan & Klik</button>
             </div>
+          </div>
+
+          <!-- GitHub Update & Info Footer Bar -->
+          <div class="moodle-ai-footer-bar">
+            <span style="color:#64748b; font-size:10px; font-weight:500;">ItzApipAjalah/moodle-ai</span>
+            <button type="button" class="moodle-ai-link-btn" id="moodle-ai-btn-check-update" title="Periksa commit pembaruan dari GitHub">
+              ${ICON_REFRESH}
+              <span>Cek Update</span>
+            </button>
           </div>
         </div>
       </div>
@@ -212,6 +233,109 @@
     });
 
     makeDraggable(widget, header);
+
+    document.getElementById("moodle-ai-btn-check-update")?.addEventListener("click", () => {
+      checkGitHubUpdate(true);
+    });
+
+    // Auto-check for updates silently on load (cached 20 mins)
+    setTimeout(() => {
+      checkGitHubUpdate(false);
+    }, 1500);
+  }
+
+  async function checkGitHubUpdate(isManual = false) {
+    if (isManual) updateStatus("Memeriksa pembaruan di GitHub...", "loading");
+
+    try {
+      // Check cache in sessionStorage to prevent hitting GitHub rate limits (60 requests/hr)
+      const cached = sessionStorage.getItem("moodle_ai_gh_update_check");
+      if (cached && !isManual) {
+        const data = JSON.parse(cached);
+        if (data && data.hasUpdate) {
+          renderUpdateBanner(data.commit);
+        }
+        return;
+      }
+
+      const res = await fetch(GITHUB_API_URL, {
+        headers: { Accept: "application/vnd.github.v3+json" }
+      });
+
+      if (!res.ok) {
+        if (isManual) updateStatus(`Gagal cek update: HTTP ${res.status}`, "error");
+        return;
+      }
+
+      const commits = await res.json();
+      if (!commits || !commits[0]) return;
+
+      const latestCommit = commits[0];
+      const latestSha = latestCommit.sha;
+      const shortSha = latestSha.substring(0, 7);
+      const commitMsg = (latestCommit.commit.message || "").split("\n")[0];
+      const commitDate = new Date(latestCommit.commit.author.date).toLocaleDateString("id-ID", {
+        day: "numeric", month: "short", year: "numeric"
+      });
+
+      // Compare with the baseline commit of this build
+      const hasUpdate = !latestSha.toLowerCase().startsWith(CURRENT_COMMIT_SHA.substring(0, 7).toLowerCase());
+
+      sessionStorage.setItem("moodle_ai_gh_update_check", JSON.stringify({
+        hasUpdate,
+        commit: { shortSha, commitMsg, commitDate, sha: latestSha },
+        timestamp: Date.now()
+      }));
+
+      if (hasUpdate) {
+        renderUpdateBanner({ shortSha, commitMsg, commitDate, sha: latestSha });
+        if (isManual) updateStatus("Pembaruan baru ditemukan di GitHub!", "success");
+      } else {
+        if (isManual) updateStatus("Ekstensi Anda sudah menggunakan commit terbaru.", "success");
+      }
+    } catch (err) {
+      if (isManual) updateStatus(`Gagal cek update: ${err.message}`, "error");
+    }
+  }
+
+  function renderUpdateBanner(info) {
+    const box = document.getElementById("moodle-ai-update-box");
+    if (!box) return;
+    box.style.display = "block";
+    box.innerHTML = `
+      <div class="moodle-ai-update-banner">
+        <div class="moodle-ai-update-top">
+          <span class="moodle-ai-update-badge">
+            ${ICON_ZAP} Update Tersedia
+          </span>
+          <span class="moodle-ai-update-date">${info.commitDate || ""}</span>
+          <button class="moodle-ai-btn-icon" id="moodle-ai-btn-dismiss-update" title="Tutup pemberitahuan" style="margin-left:auto; padding:2px; color:#78350f; background:rgba(217, 119, 6, 0.15); border:none;">
+            ${ICON_CLOSE}
+          </button>
+        </div>
+        <div class="moodle-ai-update-commit">
+          <span class="moodle-ai-update-sha">${info.shortSha}</span>: ${escapeHtml(info.commitMsg)}
+        </div>
+        <div class="moodle-ai-update-actions">
+          <button type="button" class="moodle-ai-btn-update-download" id="moodle-ai-btn-download-zip">
+            ${ICON_DOWNLOAD}
+            <span>Unduh Update (.ZIP)</span>
+          </button>
+          <a class="moodle-ai-btn-update-link" href="${GITHUB_REPO_URL}/commit/${info.sha}" target="_blank" rel="noopener noreferrer">
+            Lihat Perubahan
+          </a>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("moodle-ai-btn-download-zip")?.addEventListener("click", () => {
+      window.open(GITHUB_ZIP_URL, "_blank");
+      updateStatus("Unduhan ZIP dimulai. Ekstrak & reload ekstensi di chrome://extensions.", "success");
+    });
+
+    document.getElementById("moodle-ai-btn-dismiss-update")?.addEventListener("click", () => {
+      box.style.display = "none";
+    });
   }
 
   function updateStatus(text, type = "ready") {
