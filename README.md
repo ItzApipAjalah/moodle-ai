@@ -13,16 +13,6 @@
 
 ---
 
-## Video Demo Penggunaan
-
-Format Direct Download / Media Link:
-[https://drive.google.com/uc?export=download&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m](https://drive.google.com/uc?export=download&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m)
-
-Format Video Player / Direct Stream:
-[https://drive.google.com/uc?export=open&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m](https://drive.google.com/uc?export=open&id=12EQAOSJdOOr4ZWSl6tTqc0XZ-l7KZU8m)
-
----
-
 ## 1. Cara Mengunduh Berkas Proyek
 
 Pilih salah satu metode berikut untuk mendapatkan berkas proyek ke komputer Anda:
