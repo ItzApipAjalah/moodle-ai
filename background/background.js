@@ -17,44 +17,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // Web Gemini Auto-Pilot (Silent Background Window)
+  // Web Gemini Auto-Pilot (Desktop: Silent Background Window | Mobile: Active Tab with Auto-Return)
   if (message.action === "START_AUTO_PILOT") {
     const moodleTabId = sender.tab ? sender.tab.id : null;
+    const isMobile =
+      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+      typeof chrome.windows === "undefined" ||
+      !chrome.windows?.create;
 
     chrome.storage.local.set(
       {
         pendingGeminiPrompt: message.prompt,
         pendingGeminiImages: message.images || [],
         moodleTabId: moodleTabId,
-        autoPilot: true
+        autoPilot: true,
+        isMobile: isMobile
       },
       () => {
-        try {
-          chrome.windows.create(
-            {
-              url: "https://gemini.google.com/app?hl=id",
-              type: "popup",
-              state: "minimized",
-              focused: false
-            },
-            (win) => {
-              if (chrome.runtime.lastError || !win) {
-                chrome.tabs.create({ url: "https://gemini.google.com/app?hl=id", active: false }, (fallbackTab) => {
-                  chrome.storage.local.set({ geminiTabId: fallbackTab.id });
-                  sendResponse({ success: true, geminiTabId: fallbackTab.id });
-                });
-              } else {
-                const tabId = win.tabs && win.tabs[0] ? win.tabs[0].id : null;
-                chrome.storage.local.set({ geminiWindowId: win.id, geminiTabId: tabId });
-                sendResponse({ success: true, geminiWindowId: win.id });
-              }
+        // Mobile Mode (Android Lemur/Kiwi): Android freezes inactive tabs, so open active tab with auto-return
+        if (isMobile) {
+          chrome.tabs.create(
+            { url: "https://gemini.google.com/app?hl=id", active: true },
+            (tab) => {
+              chrome.storage.local.set({ geminiTabId: tab.id });
+              sendResponse({ success: true, geminiTabId: tab.id, isMobile: true });
             }
           );
-        } catch (_) {
-          chrome.tabs.create({ url: "https://gemini.google.com/app?hl=id", active: false }, (fallbackTab) => {
-            chrome.storage.local.set({ geminiTabId: fallbackTab.id });
-            sendResponse({ success: true, geminiTabId: fallbackTab.id });
-          });
+        } else {
+          // Desktop Mode: Silent minimized popup background window
+          try {
+            chrome.windows.create(
+              {
+                url: "https://gemini.google.com/app?hl=id",
+                type: "popup",
+                state: "minimized",
+                focused: false
+              },
+              (win) => {
+                if (chrome.runtime.lastError || !win) {
+                  chrome.tabs.create({ url: "https://gemini.google.com/app?hl=id", active: false }, (fallbackTab) => {
+                    chrome.storage.local.set({ geminiTabId: fallbackTab.id });
+                    sendResponse({ success: true, geminiTabId: fallbackTab.id });
+                  });
+                } else {
+                  const tabId = win.tabs && win.tabs[0] ? win.tabs[0].id : null;
+                  chrome.storage.local.set({ geminiWindowId: win.id, geminiTabId: tabId });
+                  sendResponse({ success: true, geminiWindowId: win.id });
+                }
+              }
+            );
+          } catch (_) {
+            chrome.tabs.create({ url: "https://gemini.google.com/app?hl=id", active: false }, (fallbackTab) => {
+              chrome.storage.local.set({ geminiTabId: fallbackTab.id });
+              sendResponse({ success: true, geminiTabId: fallbackTab.id });
+            });
+          }
         }
       }
     );
@@ -65,7 +82,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "AUTO_PILOT_ANSWER_READY") {
     const { text, moodleTabId } = message;
 
-    chrome.storage.local.get(["geminiWindowId", "geminiTabId"], (stored) => {
+    chrome.storage.local.get(["geminiWindowId", "geminiTabId", "isMobile"], (stored) => {
+      // 1. Simpan jawaban ke storage sebagai fallback jika Moodle tab di mobile sempat tertidur
+      chrome.storage.local.set({ pendingAnswersText: text });
+
+      // 2. Tutup tab/window Gemini
       if (stored.geminiWindowId) {
         chrome.windows.remove(stored.geminiWindowId).catch(() => {});
       } else if (stored.geminiTabId) {
@@ -73,10 +94,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       chrome.storage.local.remove(["geminiWindowId", "geminiTabId"]);
 
+      // 3. Alihkan kembali pengguna ke tab Moodle dan kirim jawaban
       if (moodleTabId) {
-        chrome.tabs.sendMessage(moodleTabId, {
-          action: "AUTO_PILOT_EXECUTE",
-          answersText: text
+        chrome.tabs.update(moodleTabId, { active: true }, () => {
+          setTimeout(() => {
+            chrome.tabs.sendMessage(moodleTabId, {
+              action: "AUTO_PILOT_EXECUTE",
+              answersText: text
+            }).catch(() => {});
+          }, 350);
         });
       }
     });

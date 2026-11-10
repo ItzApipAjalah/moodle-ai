@@ -2,8 +2,9 @@
 window.MoodleAI = window.MoodleAI || {};
 
 (function (app) {
-  // Initialize background message listener for Auto-Pilot response
+  // Initialize background message listener for Auto-Pilot response (with mobile fallback)
   app.initAutoPilotListener = function () {
+    // 1. Runtime message listener
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === "AUTO_PILOT_EXECUTE") {
         console.log(
@@ -11,10 +12,28 @@ window.MoodleAI = window.MoodleAI || {};
           "background:#10b981; color:#fff; padding:2px 6px; border-radius:3px; font-weight:bold;",
           "color:#0f172a; font-weight:bold;"
         );
+        chrome.storage.local.remove(["pendingAnswersText"]);
         app.updateStatus("Menerapkan jawaban AI...", "loading");
         app.parseAndApplyPastedAnswers(message.answersText, true);
         sendResponse({ success: true });
       }
+    });
+
+    // 2. Mobile tab focus / visibility fallback (Android sleeping tab recovery)
+    const checkPendingAnswers = () => {
+      chrome.storage.local.get(["pendingAnswersText"], (data) => {
+        if (data && data.pendingAnswersText) {
+          console.log("[Moodle AI] Mengambil jawaban tertunda dari storage (Mobile Fallback)...");
+          chrome.storage.local.remove(["pendingAnswersText"]);
+          app.updateStatus("Menerapkan jawaban AI...", "loading");
+          app.parseAndApplyPastedAnswers(data.pendingAnswersText, true);
+        }
+      });
+    };
+
+    window.addEventListener("focus", checkPendingAnswers);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) checkPendingAnswers();
     });
   };
 
@@ -115,8 +134,11 @@ window.MoodleAI = window.MoodleAI || {};
       prompt += `=================================================\n`;
       prompt += `Jawab sekarang sesuai contoh format di atas secara terurut!`;
 
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
       app.updateStatus(
-        allImages.length > 0
+        isMobile
+          ? "Membuka Gemini... AI sedang menjawab, akan otomatis kembali."
+          : allImages.length > 0
           ? `Menjalankan Gemini di background (${allImages.length} gambar)...`
           : "Menjalankan Gemini di background (tidak terlihat). Menunggu AI menjawab...",
         "loading"

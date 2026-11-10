@@ -19,7 +19,7 @@
       const checkInterval = setInterval(async () => {
         attempts++;
         const editor = document.querySelector(
-          'rich-textarea .ql-editor, div.ql-editor[contenteditable="true"], div[role="textbox"][contenteditable="true"]'
+          'rich-textarea .ql-editor, div.ql-editor[contenteditable="true"], div[role="textbox"][contenteditable="true"], [contenteditable="true"].ql-blank, div[contenteditable="true"], textarea.text-input-field, textarea'
         );
 
         if (editor) {
@@ -130,7 +130,7 @@
       // Submit prompt
       setTimeout(() => {
         const sendBtn = document.querySelector(
-          'button[aria-label*="Kirim"], button[aria-label*="Send"], button.send-button, [data-test-id="send-button"], .send-button-container button'
+          'button[aria-label*="Kirim"], button[aria-label*="Send"], button.send-button, [data-test-id="send-button"], .send-button-container button, button[aria-label*="Submit"]'
         );
 
         if (sendBtn && !sendBtn.disabled) {
@@ -162,7 +162,13 @@
         }
 
         if (isAutoPilot && moodleTabId) {
-          showGlassToast("Auto-Pilot Aktif: Menunggu respon Gemini...", "loading");
+          const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+          showGlassToast(
+            isMobile
+              ? "Auto-Pilot Mobile: Menunggu jawaban AI, tab akan otomatis kembali ke kuis..."
+              : "Auto-Pilot Aktif: Menunggu respon Gemini...",
+            "loading"
+          );
           waitForGeminiCompletionAndReturn(moodleTabId);
         } else {
           addCopyAnswerHelper();
