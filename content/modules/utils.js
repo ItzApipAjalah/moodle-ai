@@ -26,7 +26,7 @@ window.MoodleAI = window.MoodleAI || {};
     return false;
   };
 
-  // Draggable floating widget with click-to-expand support
+  // Draggable floating widget with touch support, click-to-expand, and viewport clamping
   app.makeDraggable = function (element, handle) {
     let posX = 0,
       posY = 0,
@@ -36,50 +36,79 @@ window.MoodleAI = window.MoodleAI || {};
       startY = 0;
     let isDragging = false;
 
-    handle.onmousedown = dragMouseDown;
+    handle.addEventListener("mousedown", onPointerDown);
+    handle.addEventListener("touchstart", onPointerDown, { passive: false });
 
-    function dragMouseDown(e) {
+    function getCoords(e) {
+      if (e.touches && e.touches.length > 0) {
+        return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+      }
+      return { clientX: e.clientX, clientY: e.clientY };
+    }
+
+    function onPointerDown(e) {
+      const target = e.target;
       if (
-        e.target.tagName === "BUTTON" ||
-        e.target.closest("button") ||
-        e.target.tagName === "INPUT" ||
-        e.target.tagName === "LABEL"
+        target.tagName === "BUTTON" ||
+        target.closest("button") ||
+        target.tagName === "INPUT" ||
+        target.tagName === "LABEL"
       ) {
         return;
       }
-      startX = e.clientX;
-      startY = e.clientY;
+
+      const coords = getCoords(e);
+      startX = coords.clientX;
+      startY = coords.clientY;
       isDragging = false;
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      document.onmouseup = closeDragElement;
-      document.onmousemove = elementDrag;
+      mouseX = coords.clientX;
+      mouseY = coords.clientY;
+
+      document.addEventListener("mousemove", onPointerMove);
+      document.addEventListener("touchmove", onPointerMove, { passive: false });
+      document.addEventListener("mouseup", onPointerUp);
+      document.addEventListener("touchend", onPointerUp);
     }
 
-    function elementDrag(e) {
-      const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
-      if (dist > 4) {
+    function onPointerMove(e) {
+      const coords = getCoords(e);
+      const dist = Math.hypot(coords.clientX - startX, coords.clientY - startY);
+      if (dist > 6) {
         isDragging = true;
       }
       if (!isDragging) return;
 
-      e.preventDefault();
-      posX = mouseX - e.clientX;
-      posY = mouseY - e.clientY;
-      mouseX = e.clientX;
-      mouseY = e.clientY;
+      if (e.cancelable) e.preventDefault();
 
-      element.style.top = element.offsetTop - posY + "px";
-      element.style.left = element.offsetLeft - posX + "px";
+      posX = mouseX - coords.clientX;
+      posY = mouseY - coords.clientY;
+      mouseX = coords.clientX;
+      mouseY = coords.clientY;
+
+      let newTop = element.offsetTop - posY;
+      let newLeft = element.offsetLeft - posX;
+
+      // Viewport boundary clamping so widget never gets lost offscreen on mobile
+      const pad = 8;
+      const maxLeft = Math.max(0, window.innerWidth - element.offsetWidth - pad);
+      const maxTop = Math.max(0, window.innerHeight - element.offsetHeight - pad);
+
+      newLeft = Math.max(pad, Math.min(newLeft, maxLeft));
+      newTop = Math.max(pad, Math.min(newTop, maxTop));
+
+      element.style.top = newTop + "px";
+      element.style.left = newLeft + "px";
       element.style.bottom = "auto";
       element.style.right = "auto";
     }
 
-    function closeDragElement() {
-      document.onmouseup = null;
-      document.onmousemove = null;
+    function onPointerUp() {
+      document.removeEventListener("mousemove", onPointerMove);
+      document.removeEventListener("touchmove", onPointerMove);
+      document.removeEventListener("mouseup", onPointerUp);
+      document.removeEventListener("touchend", onPointerUp);
 
-      // If user clicked the minimized pill without dragging, expand the widget
+      // If user tapped without dragging while minimized, expand the widget
       if (!isDragging && element.classList.contains("minimized")) {
         element.classList.remove("minimized");
         const minBtn = document.getElementById("moodle-ai-btn-min");

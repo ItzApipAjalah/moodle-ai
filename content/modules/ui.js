@@ -266,7 +266,7 @@ window.MoodleAI = window.MoodleAI || {};
         const text = await navigator.clipboard.readText();
         if (text) document.getElementById("moodle-ai-paste-text").value = text;
       } catch (_) {
-        alert("Gunakan shortcut Ctrl+V untuk menempelkan teks jawaban.");
+        alert("Gunakan shortcut Ctrl+V (atau tekan lama area teks di HP) untuk menempelkan teks jawaban.");
       }
     });
 
