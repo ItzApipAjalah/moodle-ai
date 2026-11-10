@@ -28,15 +28,29 @@
         "*://*/mod/quiz/*",
         "*://*/*/mod/quiz/*"
       ],
-      "js": ["content/content.js"],
-      "css": ["content/content.css"],
+      "js": [
+        "content/modules/constants.js",
+        "content/modules/utils.js",
+        "content/modules/storage.js",
+        "content/modules/extractor.js",
+        "content/modules/filler.js",
+        "content/modules/updater.js",
+        "content/modules/ui.js",
+        "content/modules/autopilot.js",
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ],
       "run_at": "document_idle"
     },
     {
       "matches": [
         "https://gemini.google.com/*"
       ],
-      "js": ["content/gemini_web.js"],
+      "js": [
+        "content/gemini_web.js"
+      ],
       "run_at": "document_idle"
     }
   ],
