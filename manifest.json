@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Moodle Auto Quiz Solver (Web Gemini Auto-Pilot)",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Otomatis membaca soal kuis Moodle/V-Class, menganalisis dengan Web Gemini AI di background popup senyap, dan memilih jawaban yang tepat secara instan.",
   "permissions": [
     "storage",

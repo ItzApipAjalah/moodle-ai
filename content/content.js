@@ -34,12 +34,12 @@
   const ICON_DOWNLOAD = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
   const ICON_REFRESH = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
 
-  // GitHub Repository Configuration
+  // GitHub Repository & Version Configuration
   const GITHUB_REPO = "ItzApipAjalah/moodle-ai";
-  const CURRENT_COMMIT_SHA = "d01fc4d3c9bcfdb71facafeacca1da4c6d500835";
-  const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/commits?per_page=1`;
+  const GITHUB_RAW_MANIFEST_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/manifest.json`;
   const GITHUB_ZIP_URL = `https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip`;
   const GITHUB_REPO_URL = `https://github.com/${GITHUB_REPO}`;
+  const CURRENT_VERSION = (typeof chrome !== "undefined" && chrome.runtime?.getManifest?.()?.version) || "1.2.0";
 
   // Extract Attempt ID for caching
   const urlParams = new URLSearchParams(window.location.search);
@@ -244,22 +244,34 @@
     }, 1500);
   }
 
+  function isNewerVersion(remote, local) {
+    if (!remote || !local) return false;
+    const r = remote.split(".").map(n => parseInt(n, 10) || 0);
+    const l = local.split(".").map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(r.length, l.length); i++) {
+      const rv = r[i] || 0;
+      const lv = l[i] || 0;
+      if (rv > lv) return true;
+      if (rv < lv) return false;
+    }
+    return false;
+  }
+
   async function checkGitHubUpdate(isManual = false) {
     if (isManual) updateStatus("Memeriksa pembaruan di GitHub...", "loading");
 
     try {
-      // Check cache in sessionStorage to prevent hitting GitHub rate limits (60 requests/hr)
       const cached = sessionStorage.getItem("moodle_ai_gh_update_check");
       if (cached && !isManual) {
         const data = JSON.parse(cached);
         if (data && data.hasUpdate) {
-          renderUpdateBanner(data.commit);
+          renderUpdateBanner(data.versionInfo);
         }
         return;
       }
 
-      const res = await fetch(GITHUB_API_URL, {
-        headers: { Accept: "application/vnd.github.v3+json" }
+      const res = await fetch(`${GITHUB_RAW_MANIFEST_URL}?t=${Date.now()}`, {
+        cache: "no-store"
       });
 
       if (!res.ok) {
@@ -267,31 +279,26 @@
         return;
       }
 
-      const commits = await res.json();
-      if (!commits || !commits[0]) return;
+      const remoteManifest = await res.json();
+      const latestVersion = remoteManifest.version || "";
+      const hasUpdate = isNewerVersion(latestVersion, CURRENT_VERSION);
 
-      const latestCommit = commits[0];
-      const latestSha = latestCommit.sha;
-      const shortSha = latestSha.substring(0, 7);
-      const commitMsg = (latestCommit.commit.message || "").split("\n")[0];
-      const commitDate = new Date(latestCommit.commit.author.date).toLocaleDateString("id-ID", {
-        day: "numeric", month: "short", year: "numeric"
-      });
-
-      // Compare with the baseline commit of this build
-      const hasUpdate = !latestSha.toLowerCase().startsWith(CURRENT_COMMIT_SHA.substring(0, 7).toLowerCase());
+      const versionInfo = {
+        latestVersion,
+        currentVersion: CURRENT_VERSION
+      };
 
       sessionStorage.setItem("moodle_ai_gh_update_check", JSON.stringify({
         hasUpdate,
-        commit: { shortSha, commitMsg, commitDate, sha: latestSha },
+        versionInfo,
         timestamp: Date.now()
       }));
 
       if (hasUpdate) {
-        renderUpdateBanner({ shortSha, commitMsg, commitDate, sha: latestSha });
-        if (isManual) updateStatus("Pembaruan baru ditemukan di GitHub!", "success");
+        renderUpdateBanner(versionInfo);
+        if (isManual) updateStatus(`Pembaruan versi baru (v${latestVersion}) ditemukan!`, "success");
       } else {
-        if (isManual) updateStatus("Ekstensi Anda sudah menggunakan commit terbaru.", "success");
+        if (isManual) updateStatus(`Ekstensi Anda sudah versi terbaru (v${CURRENT_VERSION}).`, "success");
       }
     } catch (err) {
       if (isManual) updateStatus(`Gagal cek update: ${err.message}`, "error");
@@ -306,23 +313,23 @@
       <div class="moodle-ai-update-banner">
         <div class="moodle-ai-update-top">
           <span class="moodle-ai-update-badge">
-            ${ICON_ZAP} Update Tersedia
+            ${ICON_ZAP} Update Tersedia: v${escapeHtml(info.latestVersion)}
           </span>
-          <span class="moodle-ai-update-date">${info.commitDate || ""}</span>
+          <span class="moodle-ai-update-date">Aktif: v${escapeHtml(info.currentVersion)}</span>
           <button class="moodle-ai-btn-icon" id="moodle-ai-btn-dismiss-update" title="Tutup pemberitahuan" style="margin-left:auto; padding:2px; color:#78350f; background:rgba(217, 119, 6, 0.15); border:none;">
             ${ICON_CLOSE}
           </button>
         </div>
         <div class="moodle-ai-update-commit">
-          <span class="moodle-ai-update-sha">${info.shortSha}</span>: ${escapeHtml(info.commitMsg)}
+          Versi baru <strong>v${escapeHtml(info.latestVersion)}</strong> telah dirilis di GitHub. Perbarui ekstensi Anda untuk mendapatkan fitur dan perbaikan terbaru.
         </div>
         <div class="moodle-ai-update-actions">
           <button type="button" class="moodle-ai-btn-update-download" id="moodle-ai-btn-download-zip">
             ${ICON_DOWNLOAD}
             <span>Unduh Update (.ZIP)</span>
           </button>
-          <a class="moodle-ai-btn-update-link" href="${GITHUB_REPO_URL}/commit/${info.sha}" target="_blank" rel="noopener noreferrer">
-            Lihat Perubahan
+          <a class="moodle-ai-btn-update-link" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener noreferrer">
+            Buka Repositori
           </a>
         </div>
       </div>

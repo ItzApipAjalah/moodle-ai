@@ -23,45 +23,53 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.tabs.create({ url: "https://gemini.google.com/app?hl=id" });
   });
 
-  // GitHub Update Checker Logic
+  // GitHub Update Checker Logic (Version-based via manifest.json)
   const GITHUB_REPO = "ItzApipAjalah/moodle-ai";
-  const CURRENT_COMMIT_SHA = "d01fc4d3c9bcfdb71facafeacca1da4c6d500835";
-  const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/commits?per_page=1`;
+  const GITHUB_RAW_MANIFEST_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/manifest.json`;
   const GITHUB_ZIP_URL = `https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip`;
+  const CURRENT_VERSION = (typeof chrome !== "undefined" && chrome.runtime?.getManifest?.()?.version) || "1.2.0";
 
   const checkUpdateBtn = document.getElementById("popupCheckUpdateBtn");
   const updateStatusEl = document.getElementById("popupUpdateStatus");
   const updateActionsEl = document.getElementById("popupUpdateActions");
   const downloadZipBtn = document.getElementById("popupDownloadZipBtn");
 
+  function isNewerVersion(remote, local) {
+    if (!remote || !local) return false;
+    const r = remote.split(".").map(n => parseInt(n, 10) || 0);
+    const l = local.split(".").map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(r.length, l.length); i++) {
+      const rv = r[i] || 0;
+      const lv = l[i] || 0;
+      if (rv > lv) return true;
+      if (rv < lv) return false;
+    }
+    return false;
+  }
+
   async function checkPopupGitHubUpdate() {
-    if (updateStatusEl) updateStatusEl.textContent = "Memeriksa commit GitHub...";
+    if (updateStatusEl) updateStatusEl.textContent = `Versi: v${CURRENT_VERSION}. Memeriksa update...`;
     try {
-      const res = await fetch(GITHUB_API_URL, {
-        headers: { Accept: "application/vnd.github.v3+json" }
+      const res = await fetch(`${GITHUB_RAW_MANIFEST_URL}?t=${Date.now()}`, {
+        cache: "no-store"
       });
       if (!res.ok) {
         if (updateStatusEl) updateStatusEl.textContent = `Status: HTTP ${res.status}`;
         return;
       }
-      const commits = await res.json();
-      if (!commits || !commits[0]) return;
+      const remoteManifest = await res.json();
+      const latestVersion = remoteManifest.version || "";
 
-      const latestCommit = commits[0];
-      const latestSha = latestCommit.sha;
-      const shortSha = latestSha.substring(0, 7);
-      const commitMsg = (latestCommit.commit.message || "").split("\n")[0];
-
-      const hasUpdate = !latestSha.toLowerCase().startsWith(CURRENT_COMMIT_SHA.substring(0, 7).toLowerCase());
+      const hasUpdate = isNewerVersion(latestVersion, CURRENT_VERSION);
 
       if (hasUpdate) {
         if (updateStatusEl) {
-          updateStatusEl.innerHTML = `<span style="color:#b45309; font-weight:600;">Update Baru!</span> <code>${shortSha}</code>: ${escapeHtml(commitMsg)}`;
+          updateStatusEl.innerHTML = `<span style="color:#b45309; font-weight:600;">Update Baru: v${escapeHtml(latestVersion)}</span> (aktif: v${escapeHtml(CURRENT_VERSION)})`;
         }
         if (updateActionsEl) updateActionsEl.style.display = "block";
       } else {
         if (updateStatusEl) {
-          updateStatusEl.innerHTML = `<span style="color:#15803d; font-weight:600;">Versi Terbaru:</span> <code>${shortSha}</code> (${escapeHtml(commitMsg)})`;
+          updateStatusEl.innerHTML = `<span style="color:#15803d; font-weight:600;">Versi Terbaru:</span> v${escapeHtml(CURRENT_VERSION)} (Sudah versi terbaru)`;
         }
         if (updateActionsEl) updateActionsEl.style.display = "none";
       }
