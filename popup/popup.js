@@ -88,6 +88,44 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // DGX / Jupyter Downloader Handlers
+  const jupyterPdfBtn = document.getElementById("popupDownloadJupyterPdfBtn");
+  const jupyterHtmlBtn = document.getElementById("popupDownloadJupyterHtmlBtn");
+  const jupyterStatus = document.getElementById("popupJupyterStatus");
+
+  function setJupyterStatus(text, type) {
+    if (!jupyterStatus) return;
+    jupyterStatus.textContent = text;
+    jupyterStatus.style.display = "block";
+    if (type === "loading") {
+      jupyterStatus.style.background = "#eff6ff";
+      jupyterStatus.style.color = "#1d4ed8";
+    } else if (type === "success") {
+      jupyterStatus.style.background = "#dcfce7";
+      jupyterStatus.style.color = "#15803d";
+    } else {
+      jupyterStatus.style.background = "#fee2e2";
+      jupyterStatus.style.color = "#b91c1c";
+    }
+    if (type !== "loading") {
+      setTimeout(() => {
+        jupyterStatus.style.display = "none";
+      }, 4000);
+    }
+  }
+
+  if (jupyterPdfBtn && window.JupyterDownloader) {
+    jupyterPdfBtn.addEventListener("click", () => {
+      window.JupyterDownloader.downloadPdf(setJupyterStatus);
+    });
+  }
+
+  if (jupyterHtmlBtn && window.JupyterDownloader) {
+    jupyterHtmlBtn.addEventListener("click", () => {
+      window.JupyterDownloader.downloadHtml(setJupyterStatus);
+    });
+  }
+
   // Check update silently on popup open
   checkPopupGitHubUpdate();
 
