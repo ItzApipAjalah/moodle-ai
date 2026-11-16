@@ -142,16 +142,42 @@ window.MoodleAI = window.MoodleAI || {};
       }
 
       // 4. Select (Dropdown / Menjodohkan)
-      else if (q.type === "select" && ans.matches) {
-        const selects = el.querySelectorAll(".answer select, table select");
+      else if (q.type === "select" && ans.matches && ans.matches.length > 0) {
+        const selects = el.querySelectorAll(".answer select, table select, select.form-select, select.select");
         ans.matches.forEach((m) => {
           const sel = selects[m.selectIndex];
           if (sel) {
-            const options = Array.from(sel.querySelectorAll("option")).filter((o) => o.value);
-            if (options[m.choiceIndex]) {
-              sel.value = options[m.choiceIndex].value;
-              sel.dispatchEvent(new Event("change", { bubbles: true }));
+            // Priority 1: match by value directly if present in options
+            if (m.value !== undefined && Array.from(sel.options).some((o) => o.value == m.value)) {
+              sel.value = String(m.value);
+            } else if (m.text) {
+              // Priority 2: match by option text
+              const optByText = Array.from(sel.options).find(
+                (o) => o.innerText.trim().toLowerCase() === m.text.toLowerCase()
+              );
+              if (optByText) {
+                sel.value = optByText.value;
+              }
+            } else if (m.choiceIndex !== undefined) {
+              // Priority 3: match by valid non-zero choiceIndex
+              const validOptions = Array.from(sel.querySelectorAll("option")).filter((o) => {
+                const txt = o.innerText.trim().toLowerCase();
+                return (
+                  o.value !== "" &&
+                  o.value !== "0" &&
+                  !txt.startsWith("choose") &&
+                  !txt.startsWith("pilih") &&
+                  txt !== ""
+                );
+              });
+              if (validOptions[m.choiceIndex]) {
+                sel.value = validOptions[m.choiceIndex].value;
+              }
             }
+
+            sel.dispatchEvent(new Event("input", { bubbles: true }));
+            sel.dispatchEvent(new Event("change", { bubbles: true }));
+            sel.classList.add("moodle-ai-option-highlight");
           }
         });
         appliedCount++;
@@ -325,6 +351,96 @@ window.MoodleAI = window.MoodleAI || {};
       // Check against cachedQuestions
       if (cachedQuestions.length > 0) {
         const q = cachedQuestions.find((item) => item.number == qNum);
+
+        // Special parsing for Select (Dropdown / Menjodohkan)
+        if (q && q.type === "select") {
+          const matches = [];
+          const poolOptions = (q.options && q.options[0] && q.options[0].subOptions) || [];
+          const subCount = q.options ? q.options.length : 10;
+
+          // Parse explicit pairs like "1 = B", "Sub 1: B", "1 = 17, 9", "1 = (7, 4, 2)"
+          // Uses lookahead so commas inside values like (7, 4, 2) or 17, 9 don't break the pair
+          const pairRegex = /(?:sub\s*|no\.?\s*)?\b(\d+)\s*[\.\:\=\-\–]\s*([\s\S]*?)(?=(?:[;|\n]|\s*,\s*(?:sub\s*|no\.?\s*)?\d+\s*[\.\:\=\-\–]|$))/gi;
+          const explicitPairs = new Map();
+          let pMatch;
+          while ((pMatch = pairRegex.exec(answerPart)) !== null) {
+            const subIdx = parseInt(pMatch[1], 10) - 1;
+            const valStr = pMatch[2].trim();
+            if (valStr) explicitPairs.set(subIdx, valStr);
+          }
+
+          // If no explicit pairs found, check for sequential letters (e.g. "B, C, A")
+          const fallbackLetters = [];
+          if (explicitPairs.size === 0) {
+            const lRegex = /(?:^|[\s,;&/|]|dan|and)+([A-Z])(?:\.|\b)/gi;
+            let flMatch;
+            while ((flMatch = lRegex.exec(answerPart)) !== null) {
+              fallbackLetters.push(flMatch[1].toUpperCase());
+            }
+          }
+
+          for (let sIdx = 0; sIdx < subCount; sIdx++) {
+            const subOpt = q.options ? q.options[sIdx] : null;
+            const subPool = (subOpt && subOpt.subOptions && subOpt.subOptions.length > 0) ? subOpt.subOptions : poolOptions;
+
+            const givenVal = explicitPairs.get(sIdx) || fallbackLetters[sIdx];
+            if (!givenVal) continue;
+
+            let matchedChoiceIndex = undefined;
+            let matchedValue = undefined;
+            let matchedText = "";
+
+            const cleanVal = givenVal.trim();
+            // Check if it's a single letter (e.g. "A", "B", "C")
+            if (/^[A-Z]$/i.test(cleanVal)) {
+              const letterIdx = cleanVal.toUpperCase().charCodeAt(0) - 65;
+              matchedChoiceIndex = letterIdx;
+              if (subPool && subPool[letterIdx]) {
+                matchedValue = subPool[letterIdx].value;
+                matchedText = subPool[letterIdx].text;
+              }
+            } else {
+              // Otherwise match by text content against options (exact match first)
+              const lowerVal = cleanVal.toLowerCase();
+              if (subPool && subPool.length > 0) {
+                let optMatch = subPool.find((so) => so.text.toLowerCase() === lowerVal);
+                if (!optMatch) {
+                  optMatch = subPool.find((so) => {
+                    const soText = so.text.toLowerCase();
+                    return soText.includes(lowerVal) || lowerVal.includes(soText);
+                  });
+                }
+                if (optMatch) {
+                  matchedChoiceIndex = subPool.indexOf(optMatch);
+                  matchedValue = optMatch.value;
+                  matchedText = optMatch.text;
+                } else {
+                  matchedText = cleanVal;
+                }
+              } else {
+                matchedText = cleanVal;
+              }
+            }
+
+            matches.push({
+              selectIndex: sIdx,
+              choiceIndex: matchedChoiceIndex,
+              value: matchedValue,
+              text: matchedText
+            });
+          }
+
+          if (matches.length > 0) {
+            answers.push({
+              number: qNum,
+              type: "select",
+              matches: matches,
+              explanation: line
+            });
+            return;
+          }
+        }
+
         if (q && q.options && q.options.length > 0) {
           if (q.type === "checkbox") {
             // For checkbox questions, also match option text in answerPart

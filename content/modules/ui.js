@@ -49,6 +49,10 @@ window.MoodleAI = window.MoodleAI || {};
       let answerDisplay = "";
       if (ans.codeAnswer) {
         answerDisplay = ans.codeAnswer;
+      } else if (ans.matches && ans.matches.length > 0) {
+        answerDisplay = ans.matches
+          .map((m, mIdx) => `Sub ${mIdx + 1}: ${m.text || `Opsi ${m.choiceIndex !== undefined ? String.fromCharCode(65 + m.choiceIndex) : m.value}`}`)
+          .join(" | ");
       } else if (ans.selectedIndices && ans.selectedIndices.length > 1 && q && q.options) {
         answerDisplay = ans.selectedIndices
           .map((i) =>

@@ -74,12 +74,27 @@ window.MoodleAI = window.MoodleAI || {};
           const img = validImgs[i];
           const dataUrl = await app.getBase64FromImage(img);
           if (dataUrl) {
+            let altName = img.alt || "";
+            // If image is inside a sub-question table row, tag with Sub number
+            const parentRow = img.closest("tr");
+            if (parentRow) {
+              const rowSel = parentRow.querySelector("select");
+              if (rowSel) {
+                const allTableSelects = Array.from(el.querySelectorAll(".answer select, table select"));
+                const subNum = allTableSelects.indexOf(rowSel) + 1;
+                if (subNum > 0) {
+                  altName = `Gambar_Soal_${qNum}_Sub_${subNum}.jpg`;
+                }
+              }
+            }
+            if (!altName) altName = `Gambar_Soal_${qNum}_${i + 1}.jpg`;
+
             images.push({
               qNum,
               index: i + 1,
               dataUrl,
               src: img.src,
-              alt: img.alt || `Gambar_Soal_${qNum}_${i + 1}.jpg`
+              alt: altName
             });
           }
         }
@@ -165,13 +180,34 @@ window.MoodleAI = window.MoodleAI || {};
         type = "select";
         selects.forEach((sel, sIdx) => {
           const row = sel.closest("tr") || sel.parentElement;
-          const subText = row ? row.querySelector(".text")?.innerText.trim() : "";
+          let subText = row ? row.querySelector(".text")?.innerText.trim() : "";
+
+          // Check if row has image(s)
+          const rowImgs = row ? Array.from(row.querySelectorAll(".text img, td.text img")) : [];
+          if (rowImgs.length > 0) {
+            const imgLabels = rowImgs
+              .map((_, imgI) => `[Gambar Sub ${sIdx + 1}${rowImgs.length > 1 ? `.${imgI + 1}` : ""}]`)
+              .join(" ");
+            subText = subText ? `${subText} ${imgLabels}` : imgLabels;
+          }
+
+          // Filter out default placeholders like "Choose...", "Pilih...", value="0" or empty
           const subOptions = Array.from(sel.querySelectorAll("option"))
-            .filter((o) => o.value)
+            .filter((o) => {
+              const txt = o.innerText.trim().toLowerCase();
+              return (
+                o.value !== "" &&
+                o.value !== "0" &&
+                !txt.startsWith("choose") &&
+                !txt.startsWith("pilih") &&
+                txt !== ""
+              );
+            })
             .map((o, oIdx) => ({ index: oIdx, value: o.value, text: o.innerText.trim() }));
+
           options.push({
             selectIndex: sIdx,
-            subText: subText || `Sub question ${sIdx + 1}`,
+            subText: subText || `Sub-pertanyaan ${sIdx + 1}`,
             subOptions
           });
         });

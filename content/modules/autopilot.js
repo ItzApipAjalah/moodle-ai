@@ -76,11 +76,12 @@ window.MoodleAI = window.MoodleAI || {};
       prompt += `2. Pilihan ganda tunggal: HANYA tulis nomor dan huruf atau teks singkat, contoh: "1. B" atau "2. A. [Teks]".\n`;
       prompt += `3. Pilihan ganda LEBIH DARI SATU ("Select one or more" / Checkbox): HANYA SEBUTKAN HURUF-HURUF PILIHAN YANG BENAR DIPISAH KOMA! CONTOH: "4. B, C, D" atau "13. A, C". JANGAN mengulang teks opsi panjang ataupun membuat tanda kurung "(atau...)".\n`;
       prompt += `4. True/False: HANYA tulis "1. True" atau "1. False".\n`;
-      prompt += `5. DILARANG MENYEBUTKAN nama file gambar (seperti Gambar_Soal_... atau *.jpg), tag sitasi, ataupun penjelasan tambahan!\n\n`;
+      prompt += `5. Menjodohkan / Pilih Dropdown ("Choose..." / "Pilih..."): Tuliskan nomor soal, lalu untuk setiap sub-pertanyaan pasangkan dengan huruf opsi yang benar, CONTOH: "2. 1 = B, 2 = C, 3 = A" atau "3. 1 = E, 2 = A, 3 = C, 4 = D, 5 = B".\n`;
+      prompt += `6. DILARANG MENYEBUTKAN nama file gambar (seperti Gambar_Soal_... atau *.jpg), tag sitasi, ataupun penjelasan tambahan!\n\n`;
       prompt += `Contoh format output yang BENAR:\n`;
       prompt += `1. False\n`;
-      prompt += `2. A\n`;
-      prompt += `3. A\n`;
+      prompt += `2. 1 = B, 2 = C, 3 = A\n`;
+      prompt += `3. 1 = E, 2 = A, 3 = C, 4 = D, 5 = B\n`;
       prompt += `4. B, C, D\n`;
       prompt += `5. D\n`;
       prompt += `6. D\n`;
@@ -111,6 +112,19 @@ window.MoodleAI = window.MoodleAI || {};
           if (q.starterCode) {
             prompt += `KODE TEMPLATE:\n\`\`\`${(q.lang || "python").toLowerCase()}\n${q.starterCode}\n\`\`\`\n\n`;
           }
+        } else if (q.type === "select") {
+          prompt += `Soal ${num} (Menjodohkan / Pilih Dropdown):\n${q.question}\n\n`;
+          prompt += `Daftar Sub-Pertanyaan:\n`;
+          q.options.forEach((opt, sIdx) => {
+            prompt += `Sub ${sIdx + 1}: ${opt.subText}\n`;
+          });
+          prompt += `\nPilihan Opsi Dropdown:\n`;
+          const poolOptions = (q.options[0] && q.options[0].subOptions) || [];
+          poolOptions.forEach((so, oIdx) => {
+            const letter = String.fromCharCode(65 + oIdx);
+            prompt += `${letter}. ${so.text}\n`;
+          });
+          prompt += `\n[TIPE: Menjodohkan / Pilih Dropdown. Pasangkan setiap Sub 1, Sub 2, dst dengan huruf opsi yang benar! Format: "${num}. 1 = [Huruf], 2 = [Huruf], ..."]\n`;
         } else {
           prompt += `Soal ${num}:\n${q.question}\n`;
           if (q.type === "checkbox") {
@@ -120,11 +134,7 @@ window.MoodleAI = window.MoodleAI || {};
             prompt += `Pilihan:\n`;
             q.options.forEach((opt, oIdx) => {
               const letter = String.fromCharCode(65 + oIdx);
-              if (q.type === "select") {
-                prompt += `- ${opt.subText}: ${opt.subOptions.map((so) => so.text).join(" / ")}\n`;
-              } else {
-                prompt += `${letter}. ${opt.text}\n`;
-              }
+              prompt += `${letter}. ${opt.text}\n`;
             });
           }
         }
