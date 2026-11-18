@@ -2,16 +2,36 @@
 
 (function () {
   chrome.storage.local.get(
-    ["pendingGeminiPrompt", "pendingGeminiImages", "moodleTabId", "autoPilot"],
+    [
+      "pendingGeminiPrompt",
+      "pendingGeminiImages",
+      "pendingChatPrompt",
+      "pendingChatFiles",
+      "moodleTabId",
+      "autoPilot",
+      "isChat",
+      "isMobile"
+    ],
     async (data) => {
-      const promptText = data.pendingGeminiPrompt;
+      // Determine if this is a chat request
+      const isChat = !!data.isChat;
+      const promptText = isChat ? data.pendingChatPrompt : data.pendingGeminiPrompt;
       if (!promptText) return;
 
-      const images = data.pendingGeminiImages || [];
+      const images = isChat ? data.pendingChatFiles : data.pendingGeminiImages || [];
       const moodleTabId = data.moodleTabId;
-      const isAutoPilot = !!data.autoPilot;
+      const isAutoPilot = !!data.autoPilot && !isChat;
 
-      chrome.storage.local.remove(["pendingGeminiPrompt", "pendingGeminiImages"]);
+      // Clean up storage for the used prompt keys
+      const keysToRemove = [
+        "pendingGeminiPrompt",
+        "pendingGeminiImages",
+        "pendingChatPrompt",
+        "pendingChatFiles",
+        "isChat"
+      ];
+      if (data.autoPilot) keysToRemove.push("autoPilot");
+      chrome.storage.local.remove(keysToRemove);
 
       let attempts = 0;
       const maxAttempts = 60;
@@ -29,10 +49,16 @@
             await attachImagesToGemini(editor, images);
           }
 
-          insertAndSend(editor, promptText, moodleTabId, isAutoPilot);
+          insertAndSend(editor, promptText, moodleTabId, isAutoPilot, isChat);
         } else if (attempts >= maxAttempts) {
           clearInterval(checkInterval);
-          console.warn("Moodle Solver: Kolom input Gemini tidak ditemukan.");
+          console.warn("Moodle/Chat: Kolom input Gemini tidak ditemukan.");
+          if (isChat) {
+            chrome.runtime.sendMessage({
+              action: "CHAT_ANSWER_READY",
+              text: "Gagal menghubungkan ke Gemini: Kolom input Gemini tidak ditemukan. Pastikan Anda sudah login ke gemini.google.com."
+            });
+          }
         }
       }, 500);
     }
@@ -41,13 +67,14 @@
   async function attachImagesToGemini(editor, images) {
     if (!images || images.length === 0) return;
 
-    showGlassToast(`Mengunggah ${images.length} gambar soal ke Gemini...`, "loading");
+    showGlassToast(`Mengunggah ${images.length} file ke Gemini...`, "loading");
 
     const files = images
       .map((img, i) => {
         if (!img.dataUrl) return null;
-        const filename = img.alt || `soal_${img.qNum || i + 1}_gambar_${i + 1}.jpg`;
-        return dataURLtoFile(img.dataUrl, filename);
+        const filename = img.name || img.alt || `file_${i + 1}`;
+        const mimeType = img.type || "";
+        return dataURLtoFile(img.dataUrl, filename, mimeType);
       })
       .filter(Boolean);
 
@@ -89,13 +116,13 @@
       dropZone.dispatchEvent(dropEvent);
     } catch (_) {}
 
-    // Give Gemini Web time to process the image attachment thumbnails
-    await new Promise((resolve) => setTimeout(resolve, 1800));
+    // Give Gemini Web time to process the file attachments
+    await new Promise((resolve) => setTimeout(resolve, 2200));
   }
 
-  function dataURLtoFile(dataurl, filename) {
+  function dataURLtoFile(dataurl, filename, customMime) {
     const arr = dataurl.split(",");
-    const mime = (arr[0].match(/:(.*?);/) || [])[1] || "image/jpeg";
+    const mime = customMime || (arr[0].match(/:(.*?);/) || [])[1] || "application/octet-stream";
     const bstr = atob(arr[1]);
     let n = bstr.length;
     const u8arr = new Uint8Array(n);
@@ -105,7 +132,7 @@
     return new File([u8arr], filename, { type: mime });
   }
 
-  function insertAndSend(editor, text, moodleTabId, isAutoPilot) {
+  function insertAndSend(editor, text, moodleTabId, isAutoPilot, isChat = false) {
     editor.focus();
 
     setTimeout(() => {
@@ -125,7 +152,7 @@
       editor.dispatchEvent(new Event("input", { bubbles: true }));
       editor.dispatchEvent(new Event("change", { bubbles: true }));
 
-      showGlassToast("Soal berhasil ditempelkan. Mengirim ke Gemini...", "info");
+      showGlassToast(isChat ? "Pesan dikirim ke Gemini..." : "Soal berhasil ditempelkan. Mengirim ke Gemini...", "info");
 
       // Submit prompt
       setTimeout(() => {
@@ -169,7 +196,10 @@
               : "Auto-Pilot Aktif: Menunggu respon Gemini...",
             "loading"
           );
-          waitForGeminiCompletionAndReturn(moodleTabId);
+          waitForGeminiCompletionAndReturn(moodleTabId, false);
+        } else if (isChat) {
+          showGlassToast("Menunggu respon AI untuk ditampilkan di popup...", "loading");
+          waitForGeminiCompletionAndReturn(null, true);
         } else {
           addCopyAnswerHelper();
         }
@@ -180,51 +210,98 @@
   function extractCleanGeminiText(responseEl) {
     if (!responseEl) return "";
 
-    // Temporarily hide citation chips, buttons, and grounding tags in the live element
-    // so that innerText preserves all line breaks without including chip text
-    const chips = responseEl.querySelectorAll(
-      "source-chip, citation-chip, inline-citation, attachment-chip, grounding-chip, sources-carousel, mat-chip, button, .citation, .source-chip, .sources-container, .grounding-container, [class*='citation'], [class*='source-chip'], [class*='grounding']"
-    );
+    // Clone element to safely manipulate DOM without affecting the live page
+    const clone = responseEl.cloneNode(true);
 
-    const prevDisplays = [];
-    chips.forEach((c) => {
-      prevDisplays.push({ el: c, display: c.style.display });
-      c.style.display = "none";
+    // 1. Remove unwanted elements: citation chips, source carousels, footnotes, buttons
+    const removeSelectors = [
+      "sources-carousel",
+      "sources-carousel-inline",
+      "source-inline-chip",
+      "source-chip",
+      "source-footnote",
+      "citation-chip",
+      "inline-citation",
+      "attachment-chip",
+      "grounding-chip",
+      "mat-chip",
+      ".citation",
+      ".source-chip",
+      ".sources-container",
+      ".grounding-container",
+      ".code-block-decoration",
+      "gem-icon-button",
+      "button"
+    ];
+    clone.querySelectorAll(removeSelectors.join(", ")).forEach((el) => {
+      try { el.remove(); } catch (_) {}
     });
 
-    // Read innerText directly from the live attached element (preserves \n between list items!)
-    let text = responseEl.innerText || "";
-
-    // Restore original display styles
-    prevDisplays.forEach(({ el, display }) => {
-      el.style.display = display;
+    // 2. Format code blocks into markdown ```lang\ncode\n```
+    const codeBlocks = clone.querySelectorAll("code-block, pre");
+    codeBlocks.forEach((cb) => {
+      const codeEl = cb.querySelector("code") || cb;
+      const codeText = codeEl.innerText || codeEl.textContent || "";
+      const textNode = document.createTextNode(`\n\`\`\`\n${codeText.trim()}\n\`\`\`\n`);
+      try { cb.replaceWith(textNode); } catch (_) {}
     });
 
-    if (!text) {
-      text = responseEl.textContent || "";
-    }
+    // 3. Format headings
+    clone.querySelectorAll("h1, h2, h3, h4").forEach((h) => {
+      const level = h.tagName.toLowerCase();
+      const prefix = level === "h1" ? "# " : level === "h2" ? "## " : "### ";
+      const text = h.innerText || h.textContent || "";
+      const textNode = document.createTextNode(`\n${prefix}${text.trim()}\n`);
+      try { h.replaceWith(textNode); } catch (_) {}
+    });
 
-    // Clean inline file references while strictly preserving newlines (\r?\n)
+    // 4. Extract text
+    let text = clone.innerText || clone.textContent || "";
+
+    // 5. Clean up any leftover internal image artifacts while strictly preserving newlines
     text = text.replace(/[\(\[\{]?[ \t]*Gambar_Soal_[^\r\n\)\]\}]+[ \t]*[\)\]\}]?/gi, "");
-    text = text.replace(/[\(\[\{]?[ \t]*soal_\d+_[^\r\n\)\]\}]+\.(?:jpg|jpeg|png|webp|gif)[ \t]*[\)\]\}]?/gi, "");
-    text = text.replace(/[\(\[\{]?[ \t]*[\w\-_]+\.(?:jpg|jpeg|png|webp|gif)[ \t]*[\)\]\}]?/gi, "");
     text = text.replace(/\[Gambar\s*\d+[^\]]*\]/gi, "");
 
     return text.trim();
   }
 
-  function waitForGeminiCompletionAndReturn(moodleTabId) {
+  function isGeminiGenerating() {
+    // 1. Check for any stop/cancel button
+    const stopBtn = document.querySelector(
+      'button[aria-label*="Hentikan" i], button[aria-label*="Stop" i], button[aria-label*="Batal" i], button.stop-button, [data-test-id="stop-button"], mat-icon[fonticonname="stop"], mat-icon[data-mat-icon-name="stop"], [aria-label*="Jeda" i]'
+    );
+    if (stopBtn && stopBtn.offsetParent !== null) return true;
+
+    // 2. Check for spinners
+    const spinner = document.querySelector('mat-progress-spinner, mat-spinner, .loading-spinner, .sparkle-animation');
+    if (spinner && spinner.offsetParent !== null) return true;
+
+    // 3. Check for aria-busy element
+    const busyEl = document.querySelector('[aria-busy="true"]');
+    if (busyEl) return true;
+
+    // 4. Check send button: when generating, send button is disabled or hidden
+    const sendBtn = document.querySelector(
+      'button[aria-label*="Kirim" i], button[aria-label*="Send" i], button.send-button, [data-test-id="send-button"], .send-button-container button'
+    );
+    if (sendBtn && sendBtn.disabled) return true;
+
+    return false;
+  }
+
+  function waitForGeminiCompletionAndReturn(moodleTabId, isChat = false) {
     let stableChecks = 0;
     let lastText = "";
     let checkCount = 0;
-    const maxWaitChecks = 120; // up to 60 seconds
+    const maxWaitChecks = 150; // up to 90 seconds
+    const requiredStableChecks = 7; // ~4.2 seconds of stable text without any busy indicators
 
     const pollInterval = setInterval(() => {
       checkCount++;
 
       // Find all model responses and get the latest clean text
       const responses = document.querySelectorAll(
-        "model-response message-content, message-content, .model-response-text, [data-test-id='model-response']"
+        ".markdown-main-panel, model-response message-content, message-content .markdown, message-content, .model-response-text, [data-test-id='model-response']"
       );
 
       let currentText = "";
@@ -232,15 +309,11 @@
         currentText = extractCleanGeminiText(responses[responses.length - 1]);
       }
 
-      // Check if stop button is present (meaning still streaming)
-      const stopBtn = document.querySelector(
-        'button[aria-label*="Hentikan"], button[aria-label*="Stop"], button.stop-button, [data-test-id="stop-button"]'
-      );
-
-      const hasContent = currentText.length > 15;
+      const generating = isGeminiGenerating();
+      const hasContent = currentText.length > 10;
       const isTextSame = currentText === lastText && currentText.length > 0;
 
-      if (hasContent && isTextSame && !stopBtn) {
+      if (hasContent && isTextSame && !generating) {
         stableChecks++;
       } else {
         stableChecks = 0;
@@ -248,28 +321,48 @@
 
       lastText = currentText;
 
-      // When text has been completely stable for 3 checks (~1.8 seconds) and stop button is gone
-      if (stableChecks >= 3 && hasContent) {
+      // When text has been completely stable for required checks (~4.2 seconds) and no busy indicators
+      if (stableChecks >= requiredStableChecks && hasContent) {
         clearInterval(pollInterval);
-        showGlassToast("Jawaban selesai diterima. Kembali ke kuis Moodle...", "success");
+        showGlassToast("Jawaban selesai diterima.", "success");
 
         setTimeout(() => {
-          chrome.runtime.sendMessage({
-            action: "AUTO_PILOT_ANSWER_READY",
-            text: currentText,
-            moodleTabId: moodleTabId
-          });
+          if (isChat) {
+            chrome.runtime.sendMessage({
+              action: "CHAT_ANSWER_READY",
+              text: currentText
+            });
+          } else {
+            chrome.runtime.sendMessage({
+              action: "AUTO_PILOT_ANSWER_READY",
+              text: currentText,
+              moodleTabId: moodleTabId
+            });
+          }
         }, 500);
       } else if (checkCount >= maxWaitChecks) {
         clearInterval(pollInterval);
         if (currentText.length > 0) {
-          chrome.runtime.sendMessage({
-            action: "AUTO_PILOT_ANSWER_READY",
-            text: currentText,
-            moodleTabId: moodleTabId
-          });
+          if (isChat) {
+            chrome.runtime.sendMessage({
+              action: "CHAT_ANSWER_READY",
+              text: currentText
+            });
+          } else {
+            chrome.runtime.sendMessage({
+              action: "AUTO_PILOT_ANSWER_READY",
+              text: currentText,
+              moodleTabId: moodleTabId
+            });
+          }
         } else {
           showGlassToast("Batas waktu menunggu respon terlampaui.", "error");
+          if (isChat) {
+            chrome.runtime.sendMessage({
+              action: "CHAT_ANSWER_READY",
+              text: "Batas waktu menunggu jawaban Gemini terlampaui (timeout)."
+            });
+          }
         }
       }
     }, 600);
