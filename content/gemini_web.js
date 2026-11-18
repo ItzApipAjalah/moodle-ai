@@ -242,7 +242,7 @@
     codeBlocks.forEach((cb) => {
       const codeEl = cb.querySelector("code") || cb;
       const codeText = codeEl.innerText || codeEl.textContent || "";
-      const textNode = document.createTextNode(`\n\`\`\`\n${codeText.trim()}\n\`\`\`\n`);
+      const textNode = document.createTextNode(`\n\n\`\`\`\n${codeText.trim()}\n\`\`\`\n\n`);
       try { cb.replaceWith(textNode); } catch (_) {}
     });
 
@@ -251,16 +251,36 @@
       const level = h.tagName.toLowerCase();
       const prefix = level === "h1" ? "# " : level === "h2" ? "## " : "### ";
       const text = h.innerText || h.textContent || "";
-      const textNode = document.createTextNode(`\n${prefix}${text.trim()}\n`);
+      const textNode = document.createTextNode(`\n\n${prefix}${text.trim()}\n\n`);
       try { h.replaceWith(textNode); } catch (_) {}
     });
 
-    // 4. Extract text
-    let text = clone.innerText || clone.textContent || "";
+    // 4. Ensure paragraphs and list items have clean separation
+    clone.querySelectorAll("p").forEach((p) => {
+      p.appendChild(document.createTextNode("\n\n"));
+    });
+    clone.querySelectorAll("li").forEach((li) => {
+      li.prepend(document.createTextNode("\n• "));
+    });
 
-    // 5. Clean up any leftover internal image artifacts while strictly preserving newlines
+    // 5. Attach offscreen to document body so Chromium computes layout geometry (newlines between blocks)
+    clone.style.position = "fixed";
+    clone.style.left = "-9999px";
+    clone.style.top = "0";
+    clone.style.width = "800px";
+    clone.style.visibility = "hidden";
+    clone.style.pointerEvents = "none";
+    document.body.appendChild(clone);
+
+    let text = clone.innerText || clone.textContent || "";
+    clone.remove();
+
+    // 6. Clean up any leftover internal image artifacts while strictly preserving newlines
     text = text.replace(/[\(\[\{]?[ \t]*Gambar_Soal_[^\r\n\)\]\}]+[ \t]*[\)\]\}]?/gi, "");
     text = text.replace(/\[Gambar\s*\d+[^\]]*\]/gi, "");
+
+    // Normalize multiple empty lines
+    text = text.replace(/\n{3,}/g, "\n\n");
 
     return text.trim();
   }
